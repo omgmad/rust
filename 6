@@ -1,0 +1,13 @@
+// src/lib.rs (continued)
+#[near_bindgen]
+impl SimpleFungible {
+    // simplified staking: user calls stake(amount), contract reduces balance and credits staked mapping
+    pub fn stake(&mut self, amount: Balance) {
+        let who = env::predecessor_account_id();
+        let bal = self.balances.get(&who).unwrap_or(0);
+        assert!(bal >= amount, "not enough");
+        self.balances.insert(&who, &(bal - amount));
+        // store staked mapping (omitted struct for brevity)
+        // reward logic: increase rewardPerToken accumulator on incoming fees etc.
+    }
+}

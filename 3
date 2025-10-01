@@ -1,0 +1,23 @@
+// contracts/cw20_fee/src/contract.rs
+// simplified: intercept transfers, take fee -> treasury & burn
+use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, Response, StdResult, CosmosMsg, BankMsg, Uint128};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20_base::contract as base;
+
+#[entry_point]
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: Cw20ExecuteMsg) -> StdResult<Response> {
+    match msg {
+        Cw20ExecuteMsg::Transfer { recipient, amount } => {
+            // take fee percent (e.g., 200 = 2%)
+            let fee_bp = 200u128;
+            let denom = 10000u128;
+            let amt_raw = amount.u128();
+            let fee = Uint128::from((amt_raw * fee_bp) / denom);
+            let send = Uint128::from(amt_raw - fee.u128());
+            // send `send` to recipient and handle `fee` (split burn / treasury)
+            // For simplicity defer: call base transfer of full amount then move fee from recipient to treasury/burn
+            base::execute(deps, env, info, Cw20ExecuteMsg::Transfer { recipient, amount: send })
+        }
+        other => base::execute(deps, env, info, other),
+    }
+}

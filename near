@@ -1,0 +1,44 @@
+// src/lib.rs (near-sdk-rs)
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::{near_bindgen, AccountId, env, Balance};
+use near_sdk::collections::LookupMap;
+
+#[near_bindgen]
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct SimpleFungible {
+    owner: AccountId,
+    total_supply: Balance,
+    balances: LookupMap<AccountId, Balance>,
+}
+
+impl Default for SimpleFungible {
+    fn default() -> Self {
+        env::panic_str("Contract should be initialized")
+    }
+}
+
+#[near_bindgen]
+impl SimpleFungible {
+    #[init]
+    pub fn new_default_meta(owner: AccountId, total_supply: Balance) -> Self {
+        let mut balances = LookupMap::new(b"b".to_vec());
+        balances.insert(&owner, &total_supply);
+        Self { owner, total_supply, balances }
+    }
+
+    pub fn ft_total_supply(&self) -> Balance { self.total_supply }
+
+    pub fn ft_balance_of(&self, account_id: AccountId) -> Balance {
+        self.balances.get(&account_id).unwrap_or(0)
+    }
+
+    #[payable]
+    pub fn ft_transfer(&mut self, receiver_id: AccountId, amount: Balance) {
+        let sender = env::predecessor_account_id();
+        let from_balance = self.balances.get(&sender).unwrap_or(0);
+        assert!(from_balance >= amount);
+        self.balances.insert(&sender, &(from_balance - amount));
+        let recv_bal = self.balances.get(&receiver_id).unwrap_or(0);
+        self.balances.insert(&receiver_id, &(recv_bal + amount));
+    }
+}

@@ -1,0 +1,34 @@
+// ink! contract skeleton: mintable_erc20.rs (similar to above)
+#[ink(storage)]
+pub struct MintableErc20 {
+    owner: AccountId,
+    total_supply: Balance,
+    balances: Mapping<AccountId, Balance>,
+}
+
+impl MintableErc20 {
+    #[ink(constructor)]
+    pub fn new(initial_supply: Balance) -> Self {
+        let caller = Self::env().caller();
+        let mut balances = Mapping::new();
+        balances.insert(caller, &initial_supply);
+        Self { owner: caller, total_supply: initial_supply, balances }
+    }
+
+    #[ink(message)]
+    pub fn mint(&mut self, to: AccountId, amount: Balance) {
+        assert_eq!(self.env().caller(), self.owner);
+        let prev = self.balances.get(&to).unwrap_or(0);
+        self.balances.insert(to, &(prev + amount));
+        self.total_supply += amount;
+    }
+
+    #[ink(message)]
+    pub fn burn(&mut self, from: AccountId, amount: Balance) {
+        assert_eq!(self.env().caller(), self.owner);
+        let prev = self.balances.get(&from).unwrap_or(0);
+        assert!(prev >= amount);
+        self.balances.insert(from, &(prev - amount));
+        self.total_supply -= amount;
+    }
+}

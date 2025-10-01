@@ -1,0 +1,60 @@
+// programs/token_like/src/lib.rs (Anchor 0.24+)
+use anchor_lang::prelude::*;
+
+declare_id!("Tokn111111111111111111111111111111111111111");
+
+#[program]
+pub mod token_like {
+    use super::*;
+    pub fn initialize(ctx: Context<Initialize>, supply: u64) -> Result<()> {
+        let mint = &mut ctx.accounts.mint;
+        mint.owner = *ctx.accounts.authority.key;
+        mint.total_supply = supply;
+        // credit authority balance (accounting in PDA)
+        Ok(())
+    }
+
+    pub fn transfer(ctx: Context<Transfer>, amount: u64) -> Result<()> {
+        let from_acct = &mut ctx.accounts.from;
+        let to_acct = &mut ctx.accounts.to;
+        require!(from_acct.balance >= amount, ErrorCode::InsufficientFunds);
+        from_acct.balance -= amount;
+        to_acct.balance += amount;
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct Initialize<'info> {
+    #[account(init, payer = authority, space = 8+40)]
+    pub mint: Account<'info, MintState>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Transfer<'info> {
+    #[account(mut, has_one = owner)]
+    pub from: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub to: Account<'info, TokenAccount>,
+}
+
+#[account]
+pub struct MintState {
+    pub owner: Pubkey,
+    pub total_supply: u64,
+}
+
+#[account]
+pub struct TokenAccount {
+    pub owner: Pubkey,
+    pub balance: u64,
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
+}

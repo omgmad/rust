@@ -1,0 +1,59 @@
+// lib.rs (ink! 4.x simplified)
+#![cfg_attr(not(feature = "std"), no_std)]
+use ink::prelude::*;
+use ink::storage::Mapping;
+
+#[ink::contract]
+pub mod erc20_basic {
+    use super::*;
+    #[ink(storage)]
+    pub struct Erc20Basic {
+        total_supply: Balance,
+        balances: Mapping<AccountId, Balance>,
+        allowances: Mapping<(AccountId, AccountId), Balance>,
+        name: ink::prelude::string::String,
+        symbol: ink::prelude::string::String,
+    }
+
+    impl Erc20Basic {
+        #[ink(constructor)]
+        pub fn new(initial_supply: Balance, name: String, symbol: String) -> Self {
+            let caller = Self::env().caller();
+            let mut balances = Mapping::new();
+            balances.insert(caller, &initial_supply);
+            Self {
+                total_supply: initial_supply,
+                balances,
+                allowances: Mapping::new(),
+                name,
+                symbol,
+            }
+        }
+
+        #[ink(message)]
+        pub fn name(&self) -> String { self.name.clone() }
+
+        #[ink(message)]
+        pub fn symbol(&self) -> String { self.symbol.clone() }
+
+        #[ink(message)]
+        pub fn total_supply(&self) -> Balance { self.total_supply }
+
+        #[ink(message)]
+        pub fn balance_of(&self, owner: AccountId) -> Balance {
+            self.balances.get(&owner).unwrap_or(0)
+        }
+
+        #[ink(message)]
+        pub fn transfer(&mut self, to: AccountId, value: Balance) -> bool {
+            let from = self.env().caller();
+            let from_balance = self.balance_of(from);
+            if from_balance < value { return false }
+            self.balances.insert(from, &(from_balance - value));
+            let to_balance = self.balance_of(to);
+            self.balances.insert(to, &(to_balance + value));
+            true
+        }
+        // approve/transfer_from omitted for brevity — add allowances mapping logic
+    }
+}
